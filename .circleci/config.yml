@@ -1,0 +1,51 @@
+# Java Gradle CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-java/ for more details
+#
+version: 2
+jobs:
+  build:
+    machine: true
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      - run:
+          name: Compute the build tag from the branch
+          command: |
+            RELEASE_REGEX="^release\/.*"
+
+            TAG="unpushed"
+            if [[ ${CIRCLE_BRANCH} =~ ${RELEASE_REGEX} ]]; then
+              TAG=${CIRCLE_BRANCH//release\//}
+            elif [ ${CIRCLE_BRANCH} == "master" ]; then
+              TAG="latest"
+            fi
+
+            if [ "${TAG}" == "unpushed" ]; then
+              echo "Building feature or bugfix branch. Docker containers will not be pushed."
+            else
+              echo "The build tag is ${TAG}"
+            fi
+
+            echo "export TAG=${TAG}" >> $BASH_ENV
+            source $BASH_ENV
+
+      # login to local dockerhub and create some directories
+      - run:
+          name: Docker Login
+          command: |
+            echo $DOCKER_PASSWORD | docker login docker.uncharted.software -u="$DOCKER_LOGIN" --password-stdin
+
+      # build ht-server
+      - run:
+          name: Build Server Docker Image
+          command: |
+            cd docker_clf_project
+            docker build -t="docker.uncharted.software/recourse/keras_spam_predictor:${TAG}" .
+
+            if [ "${TAG}" != "unpushed" ]; then
+              docker push docker.uncharted.software/recourse/keras_spam_predictor:${TAG}
+            fi

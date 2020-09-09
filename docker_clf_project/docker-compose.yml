@@ -1,0 +1,9 @@
+version: "2.1"
+services:
+  keras_spam_predictor:
+    image: docker.uncharted.software/recourse/keras_spam_predictor
+    ports:
+      - "50051:50051"
+    healthcheck:
+      test: ["CMD", "curl", "-f","http://localhost:5000/healthcheck"]
+      timeout: 10s
